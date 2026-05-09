@@ -223,7 +223,59 @@ const getCarbonAnalytics =
         });
       });
 
-      const prompt = `You are a sustainability analyst for AI infrastructure. Analyze this organization's AI carbon and water footprint. Note: Video and Image generation tools require massive amounts of water for datacenter cooling compared to text tools.
+      /*
+      |--------------------------------------------------------------------------
+      | Algorithmic fallback — always computed, never fails
+      |--------------------------------------------------------------------------
+      */
+
+      const topCarbonTool = Object.entries(metricsByTool)
+        .sort((a, b) => b[1].carbon - a[1].carbon)[0];
+
+      const fallbackReport = {
+        impactLevel:
+          totalCarbon > 500
+            ? "high"
+            : totalCarbon > 100
+            ? "medium"
+            : "low",
+        treesNeeded: Math.ceil(totalCarbon / 21000),
+        litersOfWaterWasted:
+          Math.round((totalWater / 1000) * 100) / 100,
+        waterImpactAnalysis:
+          totalWater > 0
+            ? `${topCarbonTool?.[0] ?? "Unknown"} is the most water-intensive tool in your stack. Consider switching to text-only models for non-visual tasks.`
+            : "No significant water usage detected.",
+        greenAlternatives: [
+          "Replace image/video generation tools with text alternatives where possible",
+          "Use open-source models like Llama 3 or Mistral for lower-carbon inference",
+          "Batch requests to reduce per-request overhead",
+        ],
+        reductionStrategies: [
+          "Audit which teams use high-carbon tools most frequently",
+          "Set monthly carbon budgets per team",
+          "Prefer low-energy models (energy rating: low) for routine tasks",
+        ],
+        sustainabilityScore: Math.max(
+          0,
+          Math.min(
+            100,
+            Math.round(100 - totalCarbon / 10)
+          )
+        ),
+      };
+
+      /*
+      |--------------------------------------------------------------------------
+      | Groq enrichment — best-effort, silently skipped on rate limit / error
+      |--------------------------------------------------------------------------
+      */
+
+      let aiReport = fallbackReport;
+      let source = "algorithm";
+
+      try {
+        const prompt = `You are a sustainability analyst for AI infrastructure. Analyze this organization's AI carbon and water footprint. Note: Video and Image generation tools require massive amounts of water for datacenter cooling compared to text tools.
 
 Total CO2 Emissions: ${totalCarbon}g CO2
 Total Water Consumed: ${totalWater} ml
@@ -262,21 +314,30 @@ Respond ONLY with valid JSON (no markdown, no code blocks):
   "sustainabilityScore": 0
 }`;
 
-      const completion =
-        await groq.chat.completions.create({
-          model: "llama-3.3-70b-versatile",
-          messages: [
-            { role: "user", content: prompt },
-          ],
-          temperature: 0.7,
-        });
+        const completion =
+          await groq.chat.completions.create({
+            model: "llama-3.3-70b-versatile",
+            messages: [
+              { role: "user", content: prompt },
+            ],
+            temperature: 0.7,
+          });
 
-      const text =
-        completion.choices[0].message.content;
-      const jsonMatch = text.match(/\{[\s\S]*\}/);
-      const aiReport = jsonMatch
-        ? JSON.parse(jsonMatch[0])
-        : {};
+        const text =
+          completion.choices[0].message.content;
+        const jsonMatch = text.match(/\{[\s\S]*\}/);
+
+        if (jsonMatch) {
+          aiReport = JSON.parse(jsonMatch[0]);
+          source = "algorithm+groq";
+        }
+      } catch (groqError) {
+        console.warn(
+          "Carbon AI enrichment skipped (Groq unavailable):",
+          groqError.message
+        );
+        // fallbackReport is already set — continue gracefully
+      }
 
       return res.status(200).json({
         success: true,
@@ -296,7 +357,7 @@ Respond ONLY with valid JSON (no markdown, no code blocks):
               : 0,
           metricsByTool,
           ...aiReport,
-          source: "algorithm+groq",
+          source,
         },
       });
     } catch (error) {

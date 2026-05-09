@@ -5,6 +5,28 @@ const {
   analyzeSpend,
 } = require("../analytics/spend.analytics");
 
+const getAllOrganizations =
+  async (req, res) => {
+    try {
+      const organizations =
+        await Organization.find().sort({
+          createdAt: -1,
+        });
+
+      return res.status(200).json({
+        success: true,
+        message:
+          "Organizations fetched successfully",
+        data: organizations,
+      });
+    } catch (error) {
+      return res.status(500).json({
+        success: false,
+        message: error.message,
+      });
+    }
+  };
+
 const createOrganization =
   async (req, res) => {
     try {
@@ -66,6 +88,7 @@ const getOrganizationOverview =
   };
 
 module.exports = {
+  getAllOrganizations,
   createOrganization,
   getOrganizationOverview,
 };
