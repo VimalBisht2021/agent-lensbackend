@@ -16,7 +16,7 @@ const app = express();
 app.use(cors({
   origin: [
     "http://localhost:5173",
-    "https://yourfrontend.vercel.app"
+    "https://agent-lens-frontend.vercel.app"
   ],
   credentials: true
 }));
