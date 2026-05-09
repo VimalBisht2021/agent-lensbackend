@@ -14,20 +14,32 @@ const workflowRoutes = require("./routes/workflow.routes");
 const app = express();
 
 app.use(cors({
-  origin: [
-    "http://localhost:5173",
-    "https://agent-lens-frontend-jj3k8r5yl-vimalbisht2021s-projects.vercel.app"
-  ],
-  credentials: true
+  origin: function (origin, callback) {
+    // Allow requests with no origin (like mobile apps, curl, or browser direct hits)
+    if (!origin) return callback(null, true);
+    
+    const isAllowed = allowedOrigins.includes(origin) || origin.endsWith(".vercel.app");
+    
+    if (isAllowed) {
+      callback(null, true);
+    } else {
+      // Instead of throwing an error which kills the response headers, 
+      // just pass null so the browser handles the rejection gracefully.
+      callback(null, false); 
+    }
+  },
+  credentials: true,
+  optionsSuccessStatus: 200 
 }));
-
 app.use(express.json());
 
 app.use(express.urlencoded({ extended: true }));
 
 app.use(cookieParser());
 
-app.use(helmet());
+app.use(helmet({
+  crossOriginResourcePolicy: { policy: "cross-origin" }
+}));
 
 app.use(morgan("dev"));
 
