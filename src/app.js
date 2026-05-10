@@ -22,7 +22,9 @@ app.use(helmet({ contentSecurityPolicy: false }));
 app.use(cors({
   origin: [
     "http://localhost:5173",
-    "https://agent-lens-frontend.vercel.app"
+    "https://agent-lens-frontend.vercel.app",
+    "https://agent-lens.onrender.com",
+    "https://agent-lens-frontend.onrender.com"
   ],
   credentials: true
 }));
