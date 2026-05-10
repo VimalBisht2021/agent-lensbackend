@@ -4,20 +4,28 @@ const groq = new Groq({
   apiKey: process.env.GROQ_API_KEY,
 });
 
-const callGroq = async (prompt) => {
-  const completion =
-    await groq.chat.completions.create({
+const callGroq = async (prompt, temperature = 0.7) => {
+  try {
+    const completion = await groq.chat.completions.create({
       model: "llama-3.3-70b-versatile",
-      messages: [
-        {
-          role: "user",
-          content: prompt,
-        },
-      ],
-      temperature: 0.7,
+      messages: [{ role: "user", content: prompt }],
+      temperature,
     });
-
-  return completion.choices[0].message.content;
+    return completion.choices[0].message.content;
+  } catch (apiError) {
+    console.warn("Primary Groq model failed, trying fallback...", apiError.message);
+    try {
+      const completion = await groq.chat.completions.create({
+        model: "llama-3.1-8b-instant",
+        messages: [{ role: "user", content: prompt }],
+        temperature: temperature * 0.8,
+      });
+      return completion.choices[0].message.content;
+    } catch (fallbackError) {
+      console.error("All Groq models failed:", fallbackError.message);
+      throw fallbackError;
+    }
+  }
 };
 
 /*
@@ -95,12 +103,36 @@ If there are no overlaps, return an empty array: []`;
 
     const response = await callGroq(prompt);
     
-    // Extract JSON array from response
-    const jsonMatch = response.match(/\[[\s\S]*\]/);
-    if (jsonMatch) {
-      return JSON.parse(jsonMatch[0]);
+    /*
+    |--------------------------------------------------------------------------
+    | Robust JSON Array Extraction
+    |--------------------------------------------------------------------------
+    */
+    const startIdx = response.indexOf("[");
+    const endIdx = response.lastIndexOf("]");
+
+    if (startIdx === -1 || endIdx === -1) {
+      return [];
     }
-    return [];
+
+    let rawJson = response.substring(startIdx, endIdx + 1);
+
+    // Cleanup common LLM artifacts
+    rawJson = rawJson
+      .replace(/```json/g, "")
+      .replace(/```/g, "")
+      .replace(/,\s*}/g, "}")
+      .replace(/,\s*]/g, "]")
+      .trim();
+
+    try {
+      return JSON.parse(rawJson);
+    } catch (parseError) {
+      console.error("Semantic Overlap JSON Parse Failure:", parseError.message);
+      // Log raw response for debugging if parsing fails even after cleanup
+      console.debug("Raw Response:", response);
+      return [];
+    }
   } catch (error) {
     console.error("Groq Semantic Overlap Error:", error.message);
     return [];

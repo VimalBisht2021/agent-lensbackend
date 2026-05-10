@@ -52,31 +52,37 @@ const getToolsByCategory = async (req, res) => {
 */
 
 const compareTools = async (req, res) => {
+  console.log("==> Compare Tools Request Started");
   try {
-    const { tool1, tool2 } = req.body;
+    const { toolNames } = req.body;
+    console.log("Tool Names to compare:", toolNames);
 
-    if (!tool1 || !tool2) {
+    if (!toolNames || !Array.isArray(toolNames) || toolNames.length < 2) {
       return res.status(400).json({
         success: false,
-        message: "Both tool1 and tool2 are required",
+        message: "At least two tool names are required for comparison",
       });
     }
 
+    console.log("Searching for tools in DB...");
     const tools = await AITool.find({
-      name: { $in: [tool1, tool2] },
+      name: { $in: toolNames },
     });
+    console.log(`Found ${tools.length} tools`);
 
     if (tools.length < 2) {
       return res.status(404).json({
         success: false,
-        message: "One or both tools not found in database",
+        message: "Some tools were not found in the database",
       });
     }
 
+    console.log("Mapping tool data...");
     const toolData = tools.map((t) => ({
       name: t.name,
       provider: t.provider,
       category: t.category,
+      pricingType: t.pricingType,
       monthlyPrice: t.monthlyPrice,
       contextWindow: t.contextWindow,
       strengths: t.strengths,
@@ -85,65 +91,112 @@ const compareTools = async (req, res) => {
       apiAvailable: t.apiAvailable,
       openSource: t.openSource,
       popularityScore: t.popularityScore,
+      dataPrivacy: t.dataPrivacy,
+      energyRating: t.energyRating,
+      ethicalScore: t.ethicalScore,
     }));
 
-    const prompt = `You are an enterprise AI tool analyst. Compare these two AI tools in detail.
+    const prompt = `You are an elite enterprise AI tool analyst and orchestration architect. 
+Compare these ${toolNames.length} AI tools in extreme detail for an infrastructure-grade platform.
 
-Tool 1:
-${JSON.stringify(toolData[0], null, 2)}
-
-Tool 2:
-${JSON.stringify(toolData[1], null, 2)}
+Tools Data:
+${JSON.stringify(toolData, null, 2)}
 
 Provide a comprehensive comparison covering:
-1. Which is better for what use cases
-2. Cost-effectiveness analysis
-3. Quality and speed tradeoffs
-4. Final recommendation based on different scenarios
+1. Deep feature matrix across all tools
+2. Cost-benefit analysis for enterprise scaling
+3. Privacy and ethical compliance evaluation
+4. Orchestration suitability: How well do these tools fit into an automated AI workflow?
 
 Respond ONLY with valid JSON (no markdown, no code blocks):
 {
-  "winner": "ToolName",
-  "summary": "One sentence overall verdict",
+  "winner": "ToolName (The overall best choice)",
+  "summary": "High-level strategic verdict",
   "comparison": {
-    "costEfficiency": { "winner": "ToolName", "reason": "..." },
-    "quality": { "winner": "ToolName", "reason": "..." },
-    "speed": { "winner": "ToolName", "reason": "..." },
-    "versatility": { "winner": "ToolName", "reason": "..." }
+    "costEfficiency": { "winner": "ToolName", "reason": "Detailed logic" },
+    "privacy": { "winner": "ToolName", "reason": "Data sovereignty and security logic" },
+    "performance": { "winner": "ToolName", "reason": "Context window and quality tradeoffs" },
+    "orchestration": { "winner": "ToolName", "reason": "Suitability for multi-step workflows" }
   },
+  "matrix": [
+    { "feature": "Pricing", "values": { "ToolName1": "$20", "ToolName2": "Free" } },
+    { "feature": "Context Window", "values": { "ToolName1": "128k", "ToolName2": "200k" } }
+  ],
   "bestFor": {
-    "tool1Name": ["use case 1", "use case 2"],
-    "tool2Name": ["use case 1", "use case 2"]
+    "ToolName1": ["use case 1", "use case 2"],
+    "ToolName2": ["use case 1", "use case 2"]
   },
-  "recommendation": "When to pick each tool"
+  "recommendation": "Executive summary of when to deploy which tool"
 }`;
 
-    const completion =
-      await groq.chat.completions.create({
+    console.log("Calling Groq API...");
+    let completion;
+    try {
+      completion = await groq.chat.completions.create({
         model: "llama-3.3-70b-versatile",
         messages: [{ role: "user", content: prompt }],
-        temperature: 0.7,
+        temperature: 0.5,
+        max_tokens: 2000,
       });
+      console.log("Groq API success");
+    } catch (apiError) {
+      console.warn("Primary Groq model failed, trying fallback...", apiError.message);
+      try {
+        completion = await groq.chat.completions.create({
+          model: "llama-3.1-8b-instant",
+          messages: [{ role: "user", content: prompt }],
+          temperature: 0.3,
+          max_tokens: 1500,
+        });
+        console.log("Fallback Groq API success");
+      } catch (fallbackError) {
+        console.error("All comparison models failed:", fallbackError.message);
+        return res.status(200).json({
+          success: true,
+          message: "AI analysis is temporarily unavailable, showing technical data.",
+          data: {
+            tools: toolData,
+            analysis: {
+              summary: "Service at capacity. Manual data comparison enabled.",
+              recommendation: "Please try again later for AI reasoning."
+            },
+            source: "technical-matrix"
+          }
+        });
+      }
+    }
 
+    console.log("Parsing AI response...");
     const text = completion.choices[0].message.content;
     const jsonMatch = text.match(/\{[\s\S]*\}/);
-    const analysis = jsonMatch
-      ? JSON.parse(jsonMatch[0])
-      : { summary: text };
+    
+    let analysis;
+    try {
+      analysis = jsonMatch ? JSON.parse(jsonMatch[0]) : { summary: text };
+    } catch (e) {
+      console.error("JSON Parse Error:", e);
+      analysis = { 
+        summary: "Error parsing AI analysis. Showing raw data.",
+        raw: text 
+      };
+    }
 
+    console.log("Comparison generated. Sending response.");
     return res.status(200).json({
       success: true,
-      message: "Tool comparison generated successfully",
+      message: "Advanced tool comparison generated successfully",
       data: {
         tools: toolData,
         analysis,
-        source: "groq-ai",
+        source: "algo-lens-intelligence",
       },
     });
   } catch (error) {
+    console.error("CRITICAL ERROR in compareTools:", error);
     return res.status(500).json({
       success: false,
       message: error.message,
+      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
     });
   }
 };

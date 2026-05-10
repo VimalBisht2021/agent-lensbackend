@@ -42,6 +42,7 @@ const getRecommendation = async (
       });
     }
 
+    /*
     if (
       organizationId &&
       !teamName
@@ -52,6 +53,7 @@ const getRecommendation = async (
           "teamName is required for organization workflows",
       });
     }
+    */
 
     /*
     |--------------------------------------------------------------------------

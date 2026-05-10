@@ -11,6 +11,9 @@ const analyticsRoutes = require("./routes/analytics.routes");
 const organizationRoutes = require("./routes/organization.routes");
 const workflowRoutes = require("./routes/workflow.routes");
 const authRoutes = require("./routes/auth.routes");
+const promptRoutes = require(
+  "./routes/prompt.routes"
+);
 
 const app = express();
 
@@ -25,40 +28,33 @@ app.use(cors({
 }));
 
 app.use(express.json());
-
 app.use(express.urlencoded({ extended: true }));
-
 app.use(cookieParser());
 
+// Global Guest Context Middleware (Bypass all Auth)
+const Organization = require("./models/Organization");
+app.use(async (req, res, next) => {
+  try {
+    const defaultOrg = await Organization.findOne();
+    if (defaultOrg) {
+      req.organizationId = defaultOrg._id;
+      req.organization = defaultOrg;
+    }
+    next();
+  } catch (error) {
+    next();
+  }
+});
 
 app.use(morgan("dev"));
-
 app.use(apiLimiter);
 
-app.use("/api/auth", authRoutes);
 app.use("/api/tools", toolsRoutes);
-const { protect } = require("./middleware/auth.middleware");
-
-app.use(
-  "/api/analytics",
-  protect,
-  analyticsRoutes
-);
-app.use(
-  "/api/workflows",
-  protect,
-  workflowRoutes
-);
-app.use(
-  "/api/organizations",
-  protect,
-  organizationRoutes
-);
-app.use(
-  "/api/recommendations",
-  protect,
-  recommendationRoutes
-);
+app.use("/api/prompts", promptRoutes);
+app.use("/api/analytics", analyticsRoutes);
+app.use("/api/workflows", workflowRoutes);
+app.use("/api/organizations", organizationRoutes);
+app.use("/api/recommendations", recommendationRoutes);
 
 app.get("/", (req, res) => {
   return res.status(200).json({
