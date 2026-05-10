@@ -10,6 +10,7 @@ const recommendationRoutes = require("./routes/recommendation.routes");
 const analyticsRoutes = require("./routes/analytics.routes");
 const organizationRoutes = require("./routes/organization.routes");
 const workflowRoutes = require("./routes/workflow.routes");
+const authRoutes = require("./routes/auth.routes");
 
 const app = express();
 
@@ -34,21 +35,28 @@ app.use(morgan("dev"));
 
 app.use(apiLimiter);
 
+app.use("/api/auth", authRoutes);
 app.use("/api/tools", toolsRoutes);
+const { protect } = require("./middleware/auth.middleware");
+
 app.use(
   "/api/analytics",
+  protect,
   analyticsRoutes
 );
 app.use(
   "/api/workflows",
+  protect,
   workflowRoutes
 );
 app.use(
   "/api/organizations",
+  protect,
   organizationRoutes
 );
 app.use(
   "/api/recommendations",
+  protect,
   recommendationRoutes
 );
 

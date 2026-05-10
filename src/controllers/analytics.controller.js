@@ -21,12 +21,27 @@ const getSpendAnalytics = async (
   res
 ) => {
   try {
-    const { subscriptions } = req.body;
+    const organizationId = req.organizationId;
 
-    const usageData = await UsageAnalytics.find();
+    if (!organizationId) {
+       return res.status(200).json({
+         success: true,
+         message: "No organization context. Returning empty state.",
+         data: {
+            monthlySpend: 0,
+            overlapDetected: false,
+            estimatedWaste: 0,
+            overlappingTools: [],
+            optimizationSuggestions: [],
+            toolBreakdown: []
+         }
+       });
+    }
+
+    const usageData = await UsageAnalytics.find({ organizationId });
 
     const analytics =
-      await analyzeSpend(subscriptions, usageData);
+      await analyzeSpend(req.organization.subscriptions || [], usageData);
 
     return res.status(200).json({
       success: true,
@@ -45,11 +60,28 @@ const getSpendAnalytics = async (
 const getExecutiveInsights =
   async (req, res) => {
     try {
-      const organizations =
-        await Organization.find();
+      const organizationId = req.organizationId;
 
-      const analytics =
-        await UsageAnalytics.find();
+      if (!organizationId) {
+        return res.status(200).json({
+          success: true,
+          message: "No organization context. Returning empty state.",
+          data: {
+            healthScore: 0,
+            totalAISpend: 0,
+            estimatedSavings: 0,
+            risks: ["No tools added yet"],
+            recommendations: ["Add your first tool to see insights"],
+            keyMetrics: {
+               avgCostPerWorkflow: 0,
+               toolDiversity: 0
+            }
+          }
+        });
+      }
+
+      const organizations = [req.organization];
+      const analytics = await UsageAnalytics.find({ organizationId });
 
       const executiveInsights =
         await generateExecutiveInsights({
@@ -74,8 +106,11 @@ const getExecutiveInsights =
 const getUsageAnalytics =
   async (req, res) => {
     try {
+      const organizationId = req.organizationId;
+      const query = organizationId ? { organizationId } : { organizationId: null };
+
       const analytics =
-        await UsageAnalytics.find()
+        await UsageAnalytics.find(query)
           .sort({ createdAt: -1 })
           .limit(20);
 
@@ -96,9 +131,22 @@ const getUsageAnalytics =
 const getOptimizationInsights =
   async (req, res) => {
     try {
-      const analytics =
-        await UsageAnalytics.find();
+      const organizationId = req.organizationId;
+      
+      if (!organizationId) {
+        return res.status(200).json({
+          success: true,
+          message: "No organization context. Returning empty state.",
+          data: {
+            insights: ["Add tools to see optimization opportunities"],
+            redundancies: [],
+            costSavingOpportunities: []
+          }
+        });
+      }
 
+      const analytics = await UsageAnalytics.find({ organizationId });
+      
       const optimizationReport =
         await generateOptimizationInsights(
           analytics
@@ -191,8 +239,23 @@ const groq = new Groq({
 const getCarbonAnalytics =
   async (req, res) => {
     try {
+      const organizationId = req.organizationId;
+      
+      if (!organizationId) {
+        return res.status(200).json({
+          success: true,
+          data: {
+            totalCarbonGrams: 0,
+            totalWaterConsumedMl: 0,
+            treesNeeded: 0,
+            impactLevel: "None",
+            message: "Connect an organization to track environmental impact."
+          }
+        });
+      }
+
       const analytics =
-        await UsageAnalytics.find();
+        await UsageAnalytics.find({ organizationId });
 
       const tools = await AITool.find();
 

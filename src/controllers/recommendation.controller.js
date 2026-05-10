@@ -23,9 +23,10 @@ const getRecommendation = async (
       task,
       budget,
       priority,
-      organizationId,
       teamName,
     } = req.body;
+
+    const organizationId = req.organizationId || req.body.organizationId;
 
     /*
     |--------------------------------------------------------------------------

@@ -25,10 +25,11 @@ const validateWorkflow = async (req, res) => {
       task,
       budget,
       priority,
-      organizationId,
       teamName,
       organizationPolicy: inlinePolicy,
     } = req.body;
+
+    const organizationId = req.organizationId || req.body.organizationId;
 
     if (!task || !budget || !priority) {
       return res.status(400).json({
@@ -246,11 +247,12 @@ const simulatePolicy = async (req, res) => {
 const getWorkflows = async (req, res) => {
   try {
     const {
-      organizationId,
       status,
       limit = 20,
       page = 1,
     } = req.query;
+
+    const organizationId = req.organizationId || req.query.organizationId;
 
     const filter = {};
     if (organizationId)

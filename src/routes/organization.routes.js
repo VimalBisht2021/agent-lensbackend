@@ -6,6 +6,7 @@ const {
   getAllOrganizations,
   createOrganization,
   getOrganizationOverview,
+  updateOrganization,
 } = require("../controllers/organization.controller");
 
 router.get(
@@ -16,6 +17,11 @@ router.get(
 router.post(
   "/",
   createOrganization
+);
+
+router.put(
+  "/:id",
+  updateOrganization
 );
 
 router.get(

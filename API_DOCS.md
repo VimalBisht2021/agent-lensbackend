@@ -1,8 +1,41 @@
 # Algo Lens API Documentation
 
 Base URL: `http://localhost:5000/api`
+ 
+**Authentication:** Most endpoints require a `Authorization: Bearer <token>` header.
 
 All API endpoints follow a standardized JSON response format.
+
+---
+
+## 🔐 Authentication (`/api/auth`)
+
+### 1. Signup
+- **Endpoint:** `POST /api/auth/signup`
+- **Description:** Registers a new user and automatically creates their organization.
+- **Request Body:**
+  ```json
+  {
+    "name": "John Doe",
+    "email": "john@example.com",
+    "password": "securepassword123",
+    "organizationName": "Doe Industries",
+    "industry": "Consulting"
+  }
+  ```
+- **Response Format:** Returns user data and a Bearer `token`.
+
+### 2. Login
+- **Endpoint:** `POST /api/auth/login`
+- **Description:** Authenticates a user and returns a session token.
+- **Request Body:**
+  ```json
+  {
+    "email": "john@example.com",
+    "password": "securepassword123"
+  }
+  ```
+- **Response Format:** Returns user data and a Bearer `token`.
 
 ---
 
@@ -22,9 +55,11 @@ All API endpoints follow a standardized JSON response format.
         "name": "ChatGPT Plus",
         "provider": "OpenAI",
         "category": "chat",
+        "website": "https://chat.openai.com",
         "monthlyPrice": 20,
         "popularityScore": 98,
         "carbonPerRequest": 4.2,
+        "waterPerRequest": 45,
         "ethicalScore": 72
       }
     ]

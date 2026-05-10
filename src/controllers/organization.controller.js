@@ -87,8 +87,38 @@ const getOrganizationOverview =
     }
   };
 
+const updateOrganization = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const organization = await Organization.findByIdAndUpdate(
+      id,
+      req.body,
+      { new: true, runValidators: true }
+    );
+
+    if (!organization) {
+      return res.status(404).json({
+        success: false,
+        message: "Organization not found",
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: "Organization updated successfully",
+      data: organization,
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
 module.exports = {
   getAllOrganizations,
   createOrganization,
   getOrganizationOverview,
+  updateOrganization,
 };
